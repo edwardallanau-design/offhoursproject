@@ -1,6 +1,6 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { api } from '../lib/api';
-import { Job } from '../types';
+import type { Job } from '../types';
 
 export const useJobs = (status?: string) =>
   useQuery<Job[]>({

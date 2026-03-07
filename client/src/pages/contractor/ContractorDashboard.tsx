@@ -4,7 +4,7 @@ import { JobCard } from '../../components/jobs/JobCard';
 import { JobDetailPanel } from '../../components/jobs/JobDetailPanel';
 import { Modal } from '../../components/shared/Modal';
 import { AppLayout } from '../../components/layout/AppLayout';
-import { Job, JobStatus } from '../../types';
+import type { Job, JobStatus } from '../../types';
 
 const TABS: { status: JobStatus | 'all'; label: string }[] = [
   { status: 'all', label: 'All' },

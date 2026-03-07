@@ -6,12 +6,6 @@ dist/
 .env.*
 !.env.example
 
-*.env.local
-
 # OS
 .DS_Store
 Thumbs.db
-
-#claude
-
-.claude/

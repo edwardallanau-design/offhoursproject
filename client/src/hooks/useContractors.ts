@@ -1,6 +1,6 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { api } from '../lib/api';
-import { Contractor } from '../types';
+import type { Contractor } from '../types';
 
 export const useContractors = (activeOnly = true) =>
   useQuery<Contractor[]>({

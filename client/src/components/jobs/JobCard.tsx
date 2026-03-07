@@ -1,4 +1,4 @@
-import { Job, SERVICE_TYPE_LABELS } from '../../types';
+import { type Job, SERVICE_TYPE_LABELS } from '../../types';
 import { StatusBadge } from '../shared/StatusBadge';
 import { Phone, MapPin, Clock } from 'lucide-react';
 import { formatDistanceToNow } from 'date-fns';

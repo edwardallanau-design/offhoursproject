@@ -4,7 +4,7 @@ import { useAuth } from '../../auth/AuthContext';
 import {
   LayoutDashboard, Users, Building2, LogOut, Menu, X, Briefcase, Home, FileText
 } from 'lucide-react';
-import { UserRole } from '../../types';
+import type { UserRole } from '../../types';
 
 interface NavItem {
   to: string;

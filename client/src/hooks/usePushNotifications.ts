@@ -1,5 +1,6 @@
 import { useEffect } from 'react';
 import { api } from '../lib/api';
+import { supabase } from '../lib/supabase';
 
 const urlBase64ToUint8Array = (base64String: string) => {
   const padding = '='.repeat((4 - (base64String.length % 4)) % 4);
@@ -14,6 +15,9 @@ export const usePushNotifications = () => {
 
     const register = async () => {
       try {
+        const { data: { session } } = await supabase.auth.getSession();
+        if (!session) return;
+
         const reg = await navigator.serviceWorker.register('/sw.js');
         const { data } = await api.get('/notifications/vapid-public-key');
         const publicKey = data.data.publicKey;

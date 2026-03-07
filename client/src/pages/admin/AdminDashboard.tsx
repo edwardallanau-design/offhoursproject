@@ -4,7 +4,7 @@ import { JobCard } from '../../components/jobs/JobCard';
 import { JobDetailPanel } from '../../components/jobs/JobDetailPanel';
 import { Modal } from '../../components/shared/Modal';
 import { CreateJobForm } from '../../components/jobs/CreateJobForm';
-import { Job, JobStatus } from '../../types';
+import type { Job, JobStatus } from '../../types';
 import { Plus } from 'lucide-react';
 import { AppLayout } from '../../components/layout/AppLayout';
 

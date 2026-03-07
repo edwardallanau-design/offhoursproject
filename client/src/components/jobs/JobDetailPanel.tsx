@@ -4,7 +4,7 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import toast from 'react-hot-toast';
 import { format } from 'date-fns';
-import { Job, SERVICE_TYPE_LABELS } from '../../types';
+import { type Job, SERVICE_TYPE_LABELS } from '../../types';
 import { StatusBadge } from '../shared/StatusBadge';
 import { useAuth } from '../../auth/AuthContext';
 import {

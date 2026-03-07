@@ -1,6 +1,6 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { api } from '../lib/api';
-import { StrataManager } from '../types';
+import type { StrataManager } from '../types';
 
 export const useStrataManagers = () =>
   useQuery<StrataManager[]>({

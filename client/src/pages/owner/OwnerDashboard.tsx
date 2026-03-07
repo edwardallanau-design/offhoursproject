@@ -3,7 +3,7 @@ import { Link } from 'react-router-dom';
 import { useJobs } from '../../hooks/useJobs';
 import { AppLayout } from '../../components/layout/AppLayout';
 import { StatusBadge } from '../../components/shared/StatusBadge';
-import { Job, SERVICE_TYPE_LABELS, JOB_STATUS_LABELS } from '../../types';
+import { type Job, SERVICE_TYPE_LABELS, JOB_STATUS_LABELS } from '../../types';
 import { format } from 'date-fns';
 import { Modal } from '../../components/shared/Modal';
 import { MapPin, Phone, Clock, ChevronRight } from 'lucide-react';

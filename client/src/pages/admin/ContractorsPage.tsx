@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { useContractors, useCreateContractor, useUpdateContractor } from '../../hooks/useContractors';
 import { Modal } from '../../components/shared/Modal';
 import { AppLayout } from '../../components/layout/AppLayout';
-import { Contractor } from '../../types';
+import type { Contractor } from '../../types';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
