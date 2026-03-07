@@ -84,6 +84,7 @@ export interface BillingRecord {
   strata_manager_id: string;
   amount: number;
   notes: string | null;
+  payment_status: 'billed' | 'paid' | 'reconciliation';
   billed_at: string;
   strata_manager?: StrataManager;
 }

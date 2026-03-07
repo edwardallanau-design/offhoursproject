@@ -394,6 +394,25 @@ export const cancelJob = async (req: Request, res: Response) => {
   sendSuccess(res, updated);
 };
 
+// PATCH /api/billing/:id/payment-status
+export const updateBillingPaymentStatus = async (req: Request, res: Response) => {
+  const { payment_status } = z.object({
+    payment_status: z.enum(['billed', 'paid', 'reconciliation']),
+  }).parse(req.body);
+
+  const id = param(req, 'id');
+  const { data, error } = await supabase
+    .from('billing_records')
+    .update({ payment_status })
+    .eq('id', id)
+    .select()
+    .single();
+
+  if (error) throw new Error(error.message);
+  if (!data) return sendError(res, 404, 'Billing record not found', 'NOT_FOUND');
+  sendSuccess(res, data);
+};
+
 // GET /api/jobs/:id/photos
 export const getJobPhotos = async (req: Request, res: Response) => {
   const jobId = param(req, 'id');

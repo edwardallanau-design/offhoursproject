@@ -105,8 +105,17 @@ CREATE TABLE public.billing_records (
   strata_manager_id UUID NOT NULL REFERENCES public.strata_managers(id),
   amount            NUMERIC(10,2) NOT NULL,
   notes             TEXT,
+  payment_status    TEXT NOT NULL DEFAULT 'billed'
+                      CONSTRAINT billing_payment_status_check
+                        CHECK (payment_status IN ('billed', 'paid', 'reconciliation')),
   billed_at         TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
+
+-- ── MIGRATION (run on existing databases) ─────────────────────
+-- ALTER TABLE public.billing_records
+--   ADD COLUMN payment_status TEXT NOT NULL DEFAULT 'billed'
+--   CONSTRAINT billing_payment_status_check
+--     CHECK (payment_status IN ('billed', 'paid', 'reconciliation'));
 
 -- ──────────────────────────────────────────────────────────────
 -- NOTIFICATIONS

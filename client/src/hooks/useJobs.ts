@@ -100,3 +100,12 @@ export const useCancelJob = (jobId: string) => {
     onSuccess: () => qc.invalidateQueries({ queryKey: ['jobs'] }),
   });
 };
+
+export const useUpdateBillingPaymentStatus = (billingId: string) => {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (payment_status: 'billed' | 'paid' | 'reconciliation') =>
+      api.patch(`/billing/${billingId}/payment-status`, { payment_status }),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['jobs'] }),
+  });
+};

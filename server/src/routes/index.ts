@@ -27,6 +27,9 @@ router.post('/jobs/:id/complete', authenticate, requireRole('admin', 'contractor
 router.post('/jobs/:id/bill', authenticate, requireAdmin, asyncHandler(jobs.billStrataManager));
 router.patch('/jobs/:id/cancel', authenticate, requireAdmin, asyncHandler(jobs.cancelJob));
 
+// ─── Billing ─────────────────────────────────────────────────
+router.patch('/billing/:id/payment-status', authenticate, requireAdmin, asyncHandler(jobs.updateBillingPaymentStatus));
+
 // ─── Contractors ─────────────────────────────────────────────
 router.get('/contractors', authenticate, requireAdmin, asyncHandler(contractors.listContractors));
 router.post('/contractors', authenticate, requireAdmin, asyncHandler(contractors.createContractor));

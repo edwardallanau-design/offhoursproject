@@ -15,6 +15,7 @@ interface NavItem {
 const navByRole: Record<UserRole, NavItem[]> = {
   admin: [
     { to: '/admin', label: 'Dashboard', icon: <LayoutDashboard size={18} /> },
+    { to: '/admin/billing', label: 'Billing', icon: <FileText size={18} /> },
     { to: '/admin/contractors', label: 'Contractors', icon: <Users size={18} /> },
     { to: '/admin/strata-managers', label: 'Strata Managers', icon: <Building2 size={18} /> },
   ],

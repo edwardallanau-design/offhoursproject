@@ -9,6 +9,7 @@ import { Login } from './pages/Login';
 import { AdminDashboard } from './pages/admin/AdminDashboard';
 import { ContractorsPage } from './pages/admin/ContractorsPage';
 import { StrataManagersPage } from './pages/admin/StrataManagersPage';
+import { AdminBillingPage } from './pages/admin/AdminBillingPage';
 import { ContractorDashboard } from './pages/contractor/ContractorDashboard';
 import { OwnerDashboard } from './pages/owner/OwnerDashboard';
 import { NewRequest } from './pages/owner/NewRequest';
@@ -39,6 +40,7 @@ export default function App() {
             <Route path="/" element={<RootRedirect />} />
             <Route element={<ProtectedRoute allowedRole="admin" />}>
               <Route path="/admin" element={<AdminDashboard />} />
+              <Route path="/admin/billing" element={<AdminBillingPage />} />
               <Route path="/admin/contractors" element={<ContractorsPage />} />
               <Route path="/admin/strata-managers" element={<StrataManagersPage />} />
             </Route>
