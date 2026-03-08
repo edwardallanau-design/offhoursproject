@@ -1,19 +1,21 @@
-import { useState } from 'react';
+import { useRef, useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import toast from 'react-hot-toast';
 import { format } from 'date-fns';
-import { type Job, SERVICE_TYPE_LABELS } from '../../types';
+import { type Job, type ServiceType, SERVICE_TYPE_LABELS } from '../../types';
 import { StatusBadge } from '../shared/StatusBadge';
 import { useAuth } from '../../auth/AuthContext';
 import {
   useAssignContractor, useMarkAccepted, useMarkRejected,
   useStartJob, useCompleteJob, useBillStrata, useCancelJob, useRespondToJob,
+  useUpdateJob,
 } from '../../hooks/useJobs';
 import { useContractors } from '../../hooks/useContractors';
 import { useStrataManagers } from '../../hooks/useStrataManagers';
-import { Phone, MapPin, User, Briefcase } from 'lucide-react';
+import { Phone, MapPin, User, Briefcase, StickyNote, Pencil, Bold, Italic, List, Heading2 } from 'lucide-react';
+import { MarkdownContent } from '../shared/MarkdownContent';
 
 const completeSchema = z.object({
   work_description: z.string().min(1, 'Required'),
@@ -27,6 +29,48 @@ const billSchema = z.object({
   notes: z.string().optional(),
 });
 
+const SERVICE_TYPES: { value: ServiceType; label: string }[] = [
+  { value: 'plumbing', label: 'Plumbing' },
+  { value: 'electrical', label: 'Electrical' },
+  { value: 'hvac', label: 'HVAC' },
+  { value: 'locksmith', label: 'Locksmith' },
+  { value: 'appliance_repair', label: 'Appliance Repair' },
+  { value: 'structural', label: 'Structural' },
+  { value: 'other', label: 'Other' },
+];
+
+const editJobSchema = z.object({
+  homeowner_name: z.string().min(1, 'Required'),
+  homeowner_phone: z.string().min(1, 'Required'),
+  homeowner_address: z.string().min(1, 'Required').regex(/^[a-zA-Z0-9\s,\-.\/]+$/, 'Only letters, numbers, and common punctuation'),
+  suburb: z.string().min(1, 'Required').regex(/^[a-zA-Z0-9\s]+$/, 'Only letters, numbers, and spaces'),
+  unit_number: z.string().regex(/^[a-zA-Z0-9]+$/, 'Only letters and numbers').optional().or(z.literal('')),
+  service_type: z.enum(['plumbing', 'electrical', 'hvac', 'locksmith', 'appliance_repair', 'structural', 'other']),
+  description: z.string().optional(),
+  notes: z.string().optional(),
+});
+
+type EditJobData = z.infer<typeof editJobSchema>;
+
+const applyFormat = (
+  textarea: HTMLTextAreaElement,
+  setValue: (name: 'description', value: string) => void,
+  prefix: string,
+  suffix: string,
+  placeholder: string,
+) => {
+  const start = textarea.selectionStart;
+  const end = textarea.selectionEnd;
+  const value = textarea.value;
+  const selected = value.substring(start, end) || placeholder;
+  const newValue = value.substring(0, start) + prefix + selected + suffix + value.substring(end);
+  setValue('description', newValue);
+  setTimeout(() => {
+    textarea.focus();
+    textarea.setSelectionRange(start + prefix.length, start + prefix.length + selected.length);
+  }, 0);
+};
+
 interface Props {
   job: Job;
 }
@@ -37,9 +81,37 @@ export const JobDetailPanel = ({ job }: Props) => {
   const assignment = Array.isArray(job.assignment) ? job.assignment[0] : job.assignment;
   const contractor = assignment?.contractor;
 
+  const [showEditForm, setShowEditForm] = useState(false);
   const [showCompleteForm, setShowCompleteForm] = useState(false);
   const [showBillForm, setShowBillForm] = useState(false);
   const [showAssignForm, setShowAssignForm] = useState(false);
+
+  const updateJobMutation = useUpdateJob(job.id);
+  const editDescRef = useRef<HTMLTextAreaElement | null>(null);
+  const editForm = useForm<EditJobData>({
+    resolver: zodResolver(editJobSchema),
+    defaultValues: {
+      homeowner_name: job.homeowner_name,
+      homeowner_phone: job.homeowner_phone,
+      homeowner_address: job.homeowner_address,
+      suburb: job.suburb ?? '',
+      unit_number: job.unit_number ?? '',
+      service_type: job.service_type,
+      description: job.description ?? '',
+      notes: job.notes ?? '',
+    },
+  });
+  const { ref: editDescRegRef, ...editDescRest } = editForm.register('description');
+
+  const handleEditSubmit = async (data: EditJobData) => {
+    try {
+      await updateJobMutation.mutateAsync(data);
+      toast.success('Job updated');
+      setShowEditForm(false);
+    } catch {
+      toast.error('Failed to update job');
+    }
+  };
 
   const { data: contractors } = useContractors(true);
   const { data: strataManagers } = useStrataManagers();
@@ -76,29 +148,143 @@ export const JobDetailPanel = ({ job }: Props) => {
           <h2 className="text-xl font-bold text-gray-900">{job.homeowner_name}</h2>
           <p className="text-sm text-blue-600 font-medium">{SERVICE_TYPE_LABELS[job.service_type]}</p>
         </div>
-        <StatusBadge status={job.status} />
+        <div className="flex items-center gap-3">
+          <StatusBadge status={job.status} />
+          {role === 'admin' && (
+            <button
+              onClick={() => setShowEditForm((v) => !v)}
+              className="flex items-center gap-1 text-xs text-gray-400 hover:text-gray-600 transition-colors"
+            >
+              <Pencil size={12} />
+              {showEditForm ? 'Cancel' : 'Edit'}
+            </button>
+          )}
+        </div>
       </div>
 
-      {/* Contact info */}
-      <div className="rounded-xl border bg-gray-50 p-4 space-y-2">
-        <div className="flex items-center gap-2 text-sm text-gray-700">
-          <User size={15} className="text-gray-400 shrink-0" />
-          <span>{job.homeowner_name}</span>
-        </div>
-        <div className="flex items-center gap-2 text-sm text-gray-700">
-          <Phone size={15} className="text-gray-400 shrink-0" />
-          <a href={`tel:${job.homeowner_phone}`} className="text-blue-600 hover:underline">{job.homeowner_phone}</a>
-        </div>
-        <div className="flex items-start gap-2 text-sm text-gray-700">
-          <MapPin size={15} className="mt-0.5 text-gray-400 shrink-0" />
-          <span>{job.homeowner_address}{job.unit_number ? ` — Unit ${job.unit_number}` : ''}</span>
-        </div>
-        {job.description && (
-          <div className="mt-2 text-sm text-gray-600">
-            <span className="font-medium">Notes:</span> {job.description}
+      {showEditForm ? (
+        <form onSubmit={editForm.handleSubmit(handleEditSubmit)} className="space-y-3 rounded-xl border p-4">
+          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+            <div>
+              <label className="mb-1 block text-xs font-medium text-gray-700">Client Name *</label>
+              <input {...editForm.register('homeowner_name')} className={inputClass} />
+              {editForm.formState.errors.homeowner_name && <p className="mt-1 text-xs text-red-600">{editForm.formState.errors.homeowner_name.message}</p>}
+            </div>
+            <div>
+              <label className="mb-1 block text-xs font-medium text-gray-700">Client Phone *</label>
+              <input {...editForm.register('homeowner_phone')} type="tel" className={inputClass} />
+            </div>
           </div>
-        )}
-      </div>
+          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+            <div>
+              <label className="mb-1 block text-xs font-medium text-gray-700">Street Address *</label>
+              <input {...editForm.register('homeowner_address')} className={inputClass} placeholder="123 Main St" />
+              {editForm.formState.errors.homeowner_address && <p className="mt-1 text-xs text-red-600">{editForm.formState.errors.homeowner_address.message}</p>}
+            </div>
+            <div>
+              <label className="mb-1 block text-xs font-medium text-gray-700">Suburb *</label>
+              <input {...editForm.register('suburb')} className={inputClass} placeholder="South Yarra" />
+              {editForm.formState.errors.suburb && <p className="mt-1 text-xs text-red-600">{editForm.formState.errors.suburb.message}</p>}
+            </div>
+          </div>
+          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+            <div>
+              <label className="mb-1 block text-xs font-medium text-gray-700">Unit</label>
+              <input {...editForm.register('unit_number')} className={inputClass} placeholder="e.g. 4B (optional)" />
+              {editForm.formState.errors.unit_number && <p className="mt-1 text-xs text-red-600">{editForm.formState.errors.unit_number.message}</p>}
+            </div>
+            <div>
+              <label className="mb-1 block text-xs font-medium text-gray-700">Service Type</label>
+              <select {...editForm.register('service_type')} className={inputClass}>
+                {SERVICE_TYPES.map((t) => (
+                  <option key={t.value} value={t.value}>{t.label}</option>
+                ))}
+              </select>
+            </div>
+          </div>
+          <div>
+            <label className="mb-1 block text-xs font-medium text-gray-700">Description</label>
+            <div className="rounded-lg border border-gray-300 focus-within:border-blue-500 focus-within:ring-1 focus-within:ring-blue-500 overflow-hidden">
+              <div className="flex items-center gap-0.5 border-b border-gray-200 bg-gray-50 px-2 py-1.5">
+                {([
+                  { icon: <Bold size={12} />, prefix: '**', suffix: '**', placeholder: 'bold text' },
+                  { icon: <Italic size={12} />, prefix: '*', suffix: '*', placeholder: 'italic text' },
+                  { icon: <Heading2 size={12} />, prefix: '## ', suffix: '', placeholder: 'Heading' },
+                  { icon: <List size={12} />, prefix: '\n- ', suffix: '', placeholder: 'list item' },
+                ] as const).map((btn, i) => (
+                  <button key={i} type="button"
+                    onClick={() => editDescRef.current && applyFormat(editDescRef.current, editForm.setValue, btn.prefix, btn.suffix, btn.placeholder)}
+                    className="rounded p-1.5 text-gray-500 hover:bg-gray-100 hover:text-gray-800 transition-colors"
+                  >{btn.icon}</button>
+                ))}
+              </div>
+              <textarea
+                {...editDescRest}
+                ref={(e) => { editDescRegRef(e); editDescRef.current = e; }}
+                rows={4}
+                className="w-full px-3 py-2 text-sm focus:outline-none resize-none bg-white"
+                placeholder="Describe the issue..."
+              />
+            </div>
+          </div>
+          <div>
+            <label className="mb-1 block text-xs font-medium text-gray-700">
+              Notes <span className="text-xs font-normal text-gray-400">(internal)</span>
+            </label>
+            <textarea {...editForm.register('notes')} rows={2} className={inputClass} placeholder="Internal notes..." />
+          </div>
+          <div className="flex gap-2 pt-1">
+            <button type="submit" disabled={updateJobMutation.isPending}
+              className="rounded-lg bg-blue-600 px-4 py-2 text-sm font-semibold text-white hover:bg-blue-700 disabled:opacity-60">
+              {updateJobMutation.isPending ? 'Saving…' : 'Save Changes'}
+            </button>
+            <button type="button" onClick={() => setShowEditForm(false)}
+              className="rounded-lg border border-gray-200 px-4 py-2 text-sm text-gray-600 hover:bg-gray-50">
+              Cancel
+            </button>
+          </div>
+        </form>
+      ) : (
+        <>
+          {/* Contact info */}
+          <div className="rounded-xl border bg-gray-50 p-4 space-y-2">
+            <div className="flex items-center gap-2 text-sm text-gray-700">
+              <User size={15} className="text-gray-400 shrink-0" />
+              <span>{job.homeowner_name}</span>
+            </div>
+            <div className="flex items-center gap-2 text-sm text-gray-700">
+              <Phone size={15} className="text-gray-400 shrink-0" />
+              <a href={`tel:${job.homeowner_phone}`} className="text-blue-600 hover:underline">{job.homeowner_phone}</a>
+            </div>
+            <div className="flex items-start gap-2 text-sm text-gray-700">
+              <MapPin size={15} className="mt-0.5 text-gray-400 shrink-0" />
+              <span>
+                {job.homeowner_address}{job.suburb ? `, ${job.suburb}` : ''}
+                {job.unit_number ? ` — Unit ${job.unit_number}` : ''}
+              </span>
+            </div>
+          </div>
+
+          {job.description && (
+            <div className="rounded-xl border bg-white p-4 space-y-1">
+              <p className="text-xs font-semibold uppercase tracking-wide text-gray-400 mb-2">Description</p>
+              <div className="space-y-1.5">
+                <MarkdownContent content={job.description} />
+              </div>
+            </div>
+          )}
+
+          {job.notes && (
+            <div className="rounded-xl border bg-amber-50 p-4 flex gap-2">
+              <StickyNote size={14} className="mt-0.5 shrink-0 text-amber-500" />
+              <div>
+                <p className="text-xs font-semibold uppercase tracking-wide text-amber-600 mb-1">Internal Notes</p>
+                <p className="text-sm text-amber-900">{job.notes}</p>
+              </div>
+            </div>
+          )}
+        </>
+      )}
 
       {/* Assignment info */}
       {contractor && (

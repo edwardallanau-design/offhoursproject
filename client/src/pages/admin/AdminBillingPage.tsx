@@ -3,39 +3,36 @@ import { useJobs, useUpdateBillingPaymentStatus } from '../../hooks/useJobs';
 import { AppLayout } from '../../components/layout/AppLayout';
 import { SERVICE_TYPE_LABELS, type BillingRecord, type Job } from '../../types';
 import { format } from 'date-fns';
-import { DollarSign, MapPin, Wrench, User, Building2 } from 'lucide-react';
+import { DollarSign, MapPin, Wrench, User, Building2, Pencil } from 'lucide-react';
 import toast from 'react-hot-toast';
 
 type PaymentStatus = 'billed' | 'paid' | 'reconciliation';
 
-const TABS: { status: PaymentStatus; label: string; tabActive: string; tabInactive: string; totalBg: string }[] = [
+const TABS: { status: PaymentStatus; label: string; dot: string; totalBg: string }[] = [
   {
     status: 'billed',
-    label: 'Invoiced',
-    tabActive: 'bg-amber-500 text-white border-amber-500',
-    tabInactive: 'border border-amber-300 text-amber-700 hover:bg-amber-50',
+    label: 'Accounts Receivable',
+    dot: 'bg-amber-400',
     totalBg: 'bg-amber-50 text-amber-700',
   },
   {
     status: 'paid',
-    label: 'Paid',
-    tabActive: 'bg-green-600 text-white border-green-600',
-    tabInactive: 'border border-green-300 text-green-700 hover:bg-green-50',
+    label: 'Payment Received',
+    dot: 'bg-green-500',
     totalBg: 'bg-green-50 text-green-700',
   },
   {
     status: 'reconciliation',
     label: 'For Reconciliation',
-    tabActive: 'bg-red-600 text-white border-red-600',
-    tabInactive: 'border border-red-300 text-red-700 hover:bg-red-50',
+    dot: 'bg-red-500',
     totalBg: 'bg-red-50 text-red-700',
   },
 ];
 
-const STATUS_BUTTONS: { status: PaymentStatus; label: string; active: string; inactive: string }[] = [
+const STATUS_OPTIONS: { status: PaymentStatus; label: string; active: string; inactive: string }[] = [
   {
     status: 'billed',
-    label: 'Invoiced',
+    label: 'Accounts Receivable',
     active: 'bg-amber-500 text-white border-amber-500',
     inactive: 'border border-amber-300 text-amber-700 hover:bg-amber-50',
   },
@@ -57,15 +54,25 @@ const BillingCard = ({ job }: { job: Job }) => {
   const billing = job.billing as BillingRecord | null;
   const updateStatus = useUpdateBillingPaymentStatus(billing?.id ?? '');
   const assignment = Array.isArray(job.assignment) ? job.assignment[0] : job.assignment;
+  const [editing, setEditing] = useState(false);
+  const [pendingStatus, setPendingStatus] = useState<PaymentStatus>(billing?.payment_status ?? 'billed');
+  const [pendingNotes, setPendingNotes] = useState(billing?.notes ?? '');
 
-  const handleStatusChange = async (status: PaymentStatus) => {
-    if (!billing || billing.payment_status === status) return;
+  const handleSave = async () => {
+    if (!billing) return;
     try {
-      await updateStatus.mutateAsync(status);
-      toast.success('Payment status updated');
+      await updateStatus.mutateAsync({ payment_status: pendingStatus, notes: pendingNotes || undefined });
+      toast.success('Record updated');
+      setEditing(false);
     } catch {
-      toast.error('Failed to update status');
+      toast.error('Failed to update');
     }
+  };
+
+  const handleCancel = () => {
+    setPendingStatus(billing?.payment_status ?? 'billed');
+    setPendingNotes(billing?.notes ?? '');
+    setEditing(false);
   };
 
   if (!billing) return null;
@@ -103,35 +110,67 @@ const BillingCard = ({ job }: { job: Job }) => {
           )}
         </div>
 
-        <div className="text-right shrink-0">
+        <div className="flex flex-col items-end gap-2 shrink-0">
           <div className="flex items-center gap-1 text-xl font-bold text-gray-900">
             <DollarSign size={16} />
             {billing.amount.toFixed(2)}
           </div>
-          <p className="mt-1 text-xs text-gray-400">
+          <p className="text-xs text-gray-400">
             {format(new Date(billing.billed_at), 'dd MMM yyyy')}
           </p>
+          <button
+            onClick={() => setEditing((v) => !v)}
+            className="flex items-center gap-1 text-xs text-gray-400 hover:text-gray-600 transition-colors"
+          >
+            <Pencil size={11} />
+            Update status
+          </button>
         </div>
       </div>
 
-      {billing.notes && (
+      {!editing && billing.notes && (
         <p className="mt-3 border-t pt-3 text-sm text-gray-500">{billing.notes}</p>
       )}
 
-      <div className="mt-3 border-t pt-3 flex gap-2 flex-wrap">
-        {STATUS_BUTTONS.map(({ status, label, active, inactive }) => (
-          <button
-            key={status}
-            onClick={() => handleStatusChange(status)}
-            disabled={updateStatus.isPending}
-            className={`rounded-lg border px-3 py-1 text-xs font-medium transition-colors disabled:opacity-50 ${
-              billing.payment_status === status ? active : inactive
-            }`}
-          >
-            {label}
-          </button>
-        ))}
-      </div>
+      {editing && (
+        <div className="mt-3 border-t pt-3 space-y-3">
+          <div className="flex gap-2 flex-wrap">
+            {STATUS_OPTIONS.map(({ status, label, active, inactive }) => (
+              <button
+                key={status}
+                onClick={() => setPendingStatus(status)}
+                className={`rounded-lg border px-3 py-1 text-xs font-medium transition-colors ${
+                  pendingStatus === status ? active : inactive
+                }`}
+              >
+                {label}
+              </button>
+            ))}
+          </div>
+          <textarea
+            value={pendingNotes}
+            onChange={(e) => setPendingNotes(e.target.value)}
+            placeholder="Add a note (optional)"
+            rows={2}
+            className="w-full rounded-lg border border-gray-200 px-3 py-2 text-sm text-gray-700 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500 resize-none"
+          />
+          <div className="flex gap-2">
+            <button
+              onClick={handleSave}
+              disabled={updateStatus.isPending}
+              className="rounded-lg bg-blue-600 px-4 py-1.5 text-xs font-medium text-white hover:bg-blue-700 disabled:opacity-50 transition-colors"
+            >
+              Save
+            </button>
+            <button
+              onClick={handleCancel}
+              className="rounded-lg border border-gray-200 px-4 py-1.5 text-xs font-medium text-gray-500 hover:bg-gray-50 transition-colors"
+            >
+              Cancel
+            </button>
+          </div>
+        </div>
+      )}
     </div>
   );
 };
@@ -162,20 +201,28 @@ export const AdminBillingPage = () => {
         )}
       </div>
 
-      <div className="mb-5 flex flex-wrap gap-2">
-        {TABS.map(({ status, label, tabActive, tabInactive }) => {
+      <div className="flex items-end gap-1 border-b border-gray-200 mb-5">
+        {TABS.map(({ status, label, dot }) => {
           const count = billedJobs.filter(
             (j) => (j.billing as BillingRecord | null)?.payment_status === status,
           ).length;
+          const isActive = activeTab === status;
           return (
             <button
               key={status}
               onClick={() => setActiveTab(status)}
-              className={`rounded-full px-3 py-1 text-sm font-medium transition-colors ${
-                activeTab === status ? tabActive : tabInactive
-              }`}
+              className={`flex items-center gap-2 px-4 py-2.5 text-sm font-medium rounded-t-lg border border-b-0 transition-colors ${isActive
+                ? 'bg-white border-gray-200 text-gray-900 -mb-px z-10'
+                : 'bg-gray-100 border-transparent text-gray-500 hover:bg-gray-200 hover:text-gray-700'
+                }`}
             >
-              {label} {count > 0 && `(${count})`}
+              <span className={`w-2 h-2 rounded-full shrink-0 ${dot}`} />
+              {label}
+              {count > 0 && (
+                <span className="ml-0.5 rounded-full bg-gray-200 px-1.5 py-0.5 text-xs text-gray-600 leading-none">
+                  {count}
+                </span>
+              )}
             </button>
           );
         })}

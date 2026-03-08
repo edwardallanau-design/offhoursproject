@@ -15,13 +15,30 @@ import {
 } from '../services/notification.service';
 import { JobStatus } from '../types';
 
+const alphanumericAddress = (s: z.ZodString) => s.regex(/^[a-zA-Z0-9\s,\-.\/]+$/, 'Only letters, numbers, and common punctuation allowed');
+const alphanumericSuburb = (s: z.ZodString) => s.regex(/^[a-zA-Z0-9\s]+$/, 'Only letters, numbers, and spaces allowed');
+const alphanumericUnit = (s: z.ZodString) => s.regex(/^[a-zA-Z0-9]+$/, 'Only letters and numbers allowed');
+
+const updateJobSchema = z.object({
+  homeowner_name: z.string().min(1).optional(),
+  homeowner_phone: z.string().min(1).optional(),
+  homeowner_address: alphanumericAddress(z.string().min(1)).optional(),
+  suburb: alphanumericSuburb(z.string().min(1)).optional(),
+  unit_number: alphanumericUnit(z.string()).optional(),
+  service_type: z.enum(['plumbing', 'electrical', 'hvac', 'locksmith', 'appliance_repair', 'structural', 'other']).optional(),
+  description: z.string().optional(),
+  notes: z.string().optional(),
+});
+
 const createJobSchema = z.object({
   homeowner_name: z.string().min(1),
   homeowner_phone: z.string().min(1),
-  homeowner_address: z.string().min(1),
-  unit_number: z.string().optional(),
+  homeowner_address: alphanumericAddress(z.string().min(1)),
+  suburb: alphanumericSuburb(z.string().min(1)),
+  unit_number: alphanumericUnit(z.string()).optional(),
   service_type: z.enum(['plumbing', 'electrical', 'hvac', 'locksmith', 'appliance_repair', 'structural', 'other']),
   description: z.string().optional(),
+  notes: z.string().optional(),
   strata_manager_id: z.string().uuid().optional(),
 });
 
@@ -396,20 +413,36 @@ export const cancelJob = async (req: Request, res: Response) => {
 
 // PATCH /api/billing/:id/payment-status
 export const updateBillingPaymentStatus = async (req: Request, res: Response) => {
-  const { payment_status } = z.object({
+  const { payment_status, notes } = z.object({
     payment_status: z.enum(['billed', 'paid', 'reconciliation']),
+    notes: z.string().optional(),
   }).parse(req.body);
 
   const id = param(req, 'id');
   const { data, error } = await supabase
     .from('billing_records')
-    .update({ payment_status })
+    .update({ payment_status, ...(notes !== undefined && { notes }) })
     .eq('id', id)
     .select()
     .single();
 
   if (error) throw new Error(error.message);
   if (!data) return sendError(res, 404, 'Billing record not found', 'NOT_FOUND');
+  sendSuccess(res, data);
+};
+
+// PATCH /api/jobs/:id
+export const updateJob = async (req: Request, res: Response) => {
+  const body = updateJobSchema.parse(req.body);
+  const id = param(req, 'id');
+  const { data, error } = await supabase
+    .from('jobs')
+    .update(body)
+    .eq('id', id)
+    .select()
+    .single();
+  if (error) throw new Error(error.message);
+  if (!data) return sendError(res, 404, 'Job not found', 'NOT_FOUND');
   sendSuccess(res, data);
 };
 

@@ -96,9 +96,11 @@ export interface Job {
   homeowner_name: string;
   homeowner_phone: string;
   homeowner_address: string;
+  suburb: string | null;
   unit_number: string | null;
   service_type: ServiceType;
   description: string | null;
+  notes: string | null;
   status: JobStatus;
   created_at: string;
   updated_at: string;

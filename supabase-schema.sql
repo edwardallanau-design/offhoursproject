@@ -64,9 +64,11 @@ CREATE TABLE public.jobs (
   homeowner_name    TEXT NOT NULL,
   homeowner_phone   TEXT NOT NULL,
   homeowner_address TEXT NOT NULL,
+  suburb            TEXT,
   unit_number       TEXT,
   service_type      service_type NOT NULL,
   description       TEXT,
+  notes             TEXT,
   status            job_status NOT NULL DEFAULT 'new',
   created_at        TIMESTAMPTZ NOT NULL DEFAULT NOW(),
   updated_at        TIMESTAMPTZ NOT NULL DEFAULT NOW()
@@ -111,11 +113,18 @@ CREATE TABLE public.billing_records (
   billed_at         TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
 
--- ── MIGRATION (run on existing databases) ─────────────────────
+-- ── MIGRATIONS (run on existing databases) ────────────────────
+-- billing_records: payment_status column
 -- ALTER TABLE public.billing_records
 --   ADD COLUMN payment_status TEXT NOT NULL DEFAULT 'billed'
 --   CONSTRAINT billing_payment_status_check
 --     CHECK (payment_status IN ('billed', 'paid', 'reconciliation'));
+
+-- jobs: internal notes field
+-- ALTER TABLE public.jobs ADD COLUMN notes TEXT;
+
+-- jobs: suburb field
+-- ALTER TABLE public.jobs ADD COLUMN suburb TEXT;
 
 -- ──────────────────────────────────────────────────────────────
 -- NOTIFICATIONS

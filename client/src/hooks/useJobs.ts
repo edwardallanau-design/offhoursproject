@@ -1,6 +1,24 @@
+import { useEffect } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { api } from '../lib/api';
+import { supabase } from '../lib/supabase';
 import type { Job } from '../types';
+
+export const useJobsRealtime = () => {
+  const qc = useQueryClient();
+  useEffect(() => {
+    const channel = supabase
+      .channel('jobs-realtime')
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'jobs' }, () => {
+        qc.invalidateQueries({ queryKey: ['jobs'] });
+      })
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'billing_records' }, () => {
+        qc.invalidateQueries({ queryKey: ['jobs'] });
+      })
+      .subscribe();
+    return () => { supabase.removeChannel(channel); };
+  }, [qc]);
+};
 
 export const useJobs = (status?: string) =>
   useQuery<Job[]>({
@@ -10,6 +28,14 @@ export const useJobs = (status?: string) =>
       return data.data;
     },
   });
+
+export const useUpdateJob = (jobId: string) => {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (body: Record<string, unknown>) => api.patch(`/jobs/${jobId}`, body),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['jobs'] }),
+  });
+};
 
 export const useJob = (id: string) =>
   useQuery<Job>({
@@ -104,8 +130,8 @@ export const useCancelJob = (jobId: string) => {
 export const useUpdateBillingPaymentStatus = (billingId: string) => {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: (payment_status: 'billed' | 'paid' | 'reconciliation') =>
-      api.patch(`/billing/${billingId}/payment-status`, { payment_status }),
+    mutationFn: (payload: { payment_status: 'billed' | 'paid' | 'reconciliation'; notes?: string }) =>
+      api.patch(`/billing/${billingId}/payment-status`, payload),
     onSuccess: () => qc.invalidateQueries({ queryKey: ['jobs'] }),
   });
 };

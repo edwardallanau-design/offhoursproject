@@ -1,6 +1,7 @@
-import { ReactNode, useState } from 'react';
+import { type ReactNode, useState } from 'react';
 import { NavLink, useNavigate } from 'react-router-dom';
 import { useAuth } from '../../auth/AuthContext';
+import { useJobsRealtime } from '../../hooks/useJobs';
 import {
   LayoutDashboard, Users, Building2, LogOut, Menu, X, Briefcase, Home, FileText
 } from 'lucide-react';
@@ -43,6 +44,7 @@ export const AppLayout = ({ children }: { children: ReactNode }) => {
   const { user, logout } = useAuth();
   const navigate = useNavigate();
   const [sidebarOpen, setSidebarOpen] = useState(false);
+  useJobsRealtime();
 
   if (!user) return null;
   const navItems = navByRole[user.role];
