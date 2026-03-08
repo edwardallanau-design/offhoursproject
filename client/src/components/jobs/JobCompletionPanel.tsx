@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useForm, useFieldArray } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
@@ -43,7 +43,6 @@ export const JobCompletionPanel = ({
   const [visible, setVisible] = useState(false);
   const [files, setFiles] = useState<File[]>([]);
   const [uploading, setUploading] = useState(false);
-  const fileInputRef = useRef<HTMLInputElement>(null);
   const completeMutation = useCompleteJob(job.id);
   const updateMutation = useUpdateCompletion(job.id);
 
@@ -77,10 +76,10 @@ export const JobCompletionPanel = ({
   const grandTotal = (Number(watchedLabour) || 0) + materialsSubtotal;
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    if (e.target.files) {
-      setFiles((prev) => [...prev, ...Array.from(e.target.files!)]);
-    }
-    e.target.value = '';
+    const selected = e.target.files ? Array.from(e.target.files) : [];
+    if (selected.length) setFiles((prev) => [...prev, ...selected]);
+    // Reset so the same file can be re-selected
+    e.currentTarget.value = '';
   };
 
   const removeFile = (index: number) => {
@@ -294,22 +293,17 @@ export const JobCompletionPanel = ({
             </div>
           )}
 
-          <input
-            ref={fileInputRef}
-            type="file"
-            multiple
-            accept="image/*,.pdf"
-            className="hidden"
-            onChange={handleFileChange}
-          />
-          <button
-            type="button"
-            onClick={() => fileInputRef.current?.click()}
-            className="flex items-center gap-2 rounded-lg border border-dashed border-gray-300 px-4 py-2.5 text-sm text-gray-500 hover:border-blue-400 hover:text-blue-600 transition-colors w-full justify-center"
-          >
+          <label className="flex items-center gap-2 rounded-lg border border-dashed border-gray-300 px-4 py-2.5 text-sm text-gray-500 hover:border-blue-400 hover:text-blue-600 transition-colors w-full justify-center cursor-pointer">
             <Paperclip size={15} />
             Attach photos or receipts
-          </button>
+            <input
+              type="file"
+              multiple
+              accept="image/*,.pdf"
+              className="sr-only"
+              onChange={handleFileChange}
+            />
+          </label>
         </div>
 
         {/* Submit */}
