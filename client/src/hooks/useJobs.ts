@@ -103,12 +103,35 @@ export const useCompleteJob = (jobId: string) => {
     mutationFn: (body: {
       work_description: string;
       labor_cost: number;
-      materials_cost: number;
+      materials?: Array<{ name: string; cost: number }>;
       photo_paths?: string[];
     }) => api.post(`/jobs/${jobId}/complete`, body),
     onSuccess: () => qc.invalidateQueries({ queryKey: ['jobs'] }),
   });
 };
+
+export const useUpdateCompletion = (jobId: string) => {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (body: {
+      work_description: string;
+      labor_cost: number;
+      materials?: Array<{ name: string; cost: number }>;
+      photo_paths?: string[];
+    }) => api.patch(`/jobs/${jobId}/completion`, body),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['jobs'] }),
+  });
+};
+
+export const useJobPhotos = (jobId: string) =>
+  useQuery({
+    queryKey: ['jobs', jobId, 'photos'],
+    queryFn: async () => {
+      const { data } = await api.get(`/jobs/${jobId}/photos`);
+      return data.data as Array<{ id: string; storage_path: string; signed_url?: string; uploaded_at: string }>;
+    },
+    enabled: !!jobId,
+  });
 
 export const useBillStrata = (jobId: string) => {
   const qc = useQueryClient();

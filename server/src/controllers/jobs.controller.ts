@@ -45,7 +45,7 @@ const createJobSchema = z.object({
 const completeJobSchema = z.object({
   work_description: z.string().min(1),
   labor_cost: z.number().min(0),
-  materials_cost: z.number().min(0),
+  materials: z.array(z.object({ name: z.string().min(1), cost: z.number().min(0) })).optional(),
   photo_paths: z.array(z.string()).optional(),
 });
 
@@ -296,14 +296,16 @@ export const completeJob = async (req: Request, res: Response) => {
     return sendError(res, 400, `Cannot complete job with status "${job.status}"`, 'INVALID_TRANSITION');
   }
 
-  const totalAmount = body.labor_cost + body.materials_cost;
+  const materials_cost = (body.materials ?? []).reduce((sum, m) => sum + m.cost, 0);
+  const totalAmount = body.labor_cost + materials_cost;
 
   // Insert completion record
   const { error: cErr } = await supabase.from('job_completions').upsert({
     job_id: jobId,
     work_description: body.work_description,
     labor_cost: body.labor_cost,
-    materials_cost: body.materials_cost,
+    materials_cost,
+    materials: body.materials ?? [],
     total_amount: totalAmount,
   });
   if (cErr) throw new Error(cErr.message);
@@ -397,6 +399,50 @@ export const billStrataManager = async (req: Request, res: Response) => {
   ).catch(() => {});
 
   sendSuccess(res, { message: 'Strata manager billed successfully' });
+};
+
+// PATCH /api/jobs/:id/completion
+export const updateCompletion = async (req: Request, res: Response) => {
+  const body = completeJobSchema.parse(req.body);
+  const jobId = param(req, 'id');
+
+  const job = await getJobById(jobId);
+  if (!job) return sendError(res, 404, 'Job not found', 'NOT_FOUND');
+  if (!job.completion) return sendError(res, 404, 'No completion record found', 'NOT_FOUND');
+
+  if (req.role === 'contractor') {
+    const assignment = Array.isArray(job.assignment) ? job.assignment[0] : job.assignment;
+    if (!assignment || assignment.contractor?.id !== req.contractorId) {
+      return sendError(res, 403, 'You are not assigned to this job', 'FORBIDDEN');
+    }
+  }
+
+  const materials_cost = (body.materials ?? []).reduce((sum, m) => sum + m.cost, 0);
+  const total_amount = body.labor_cost + materials_cost;
+
+  const { error: uErr } = await supabase
+    .from('job_completions')
+    .update({
+      work_description: body.work_description,
+      labor_cost: body.labor_cost,
+      materials_cost,
+      materials: body.materials ?? [],
+      total_amount,
+    })
+    .eq('job_id', jobId);
+  if (uErr) throw new Error(uErr.message);
+
+  if (body.photo_paths?.length) {
+    await supabase.from('job_photos').insert(
+      body.photo_paths.map((path) => ({
+        job_id: jobId,
+        storage_path: path,
+        uploaded_by: req.user!.id,
+      })),
+    );
+  }
+
+  sendSuccess(res, await getJobById(jobId));
 };
 
 // PATCH /api/jobs/:id/cancel

@@ -67,6 +67,7 @@ export interface JobCompletion {
   labor_cost: number;
   materials_cost: number;
   total_amount: number;
+  materials?: Array<{ name: string; cost: number }>;
   submitted_at: string;
 }
 

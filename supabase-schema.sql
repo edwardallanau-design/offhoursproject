@@ -90,6 +90,7 @@ CREATE TABLE public.job_completions (
   labor_cost       NUMERIC(10,2) NOT NULL DEFAULT 0,
   materials_cost   NUMERIC(10,2) NOT NULL DEFAULT 0,
   total_amount     NUMERIC(10,2) NOT NULL,
+  materials        JSONB,
   submitted_at     TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
 
@@ -125,6 +126,9 @@ CREATE TABLE public.billing_records (
 
 -- jobs: suburb field
 -- ALTER TABLE public.jobs ADD COLUMN suburb TEXT;
+
+-- job_completions: materials breakdown
+-- ALTER TABLE public.job_completions ADD COLUMN materials JSONB;
 
 -- ──────────────────────────────────────────────────────────────
 -- NOTIFICATIONS
