@@ -1,7 +1,4 @@
 import { useState } from 'react';
-import { useForm } from 'react-hook-form';
-import { zodResolver } from '@hookform/resolvers/zod';
-import { z } from 'zod';
 import toast from 'react-hot-toast';
 import { format } from 'date-fns';
 import { type Job, SERVICE_TYPE_LABELS } from '../../types';
@@ -9,21 +6,15 @@ import { StatusBadge } from '../shared/StatusBadge';
 import { useAuth } from '../../auth/AuthContext';
 import {
   useAssignContractor, useMarkAccepted, useMarkRejected,
-  useStartJob, useBillStrata, useCancelJob, useRespondToJob,
+  useStartJob, useCancelJob, useRespondToJob,
   useJobPhotos,
 } from '../../hooks/useJobs';
 import { useContractors } from '../../hooks/useContractors';
-import { useStrataManagers } from '../../hooks/useStrataManagers';
 import { Phone, MapPin, User, Briefcase, StickyNote, Pencil, Image, ChevronLeft, ChevronRight, X } from 'lucide-react';
 import { MarkdownContent } from '../shared/MarkdownContent';
 import { JobCompletionPanel } from './JobCompletionPanel';
 import { JobEditPanel } from './JobEditPanel';
-
-const billSchema = z.object({
-  strata_manager_id: z.string().uuid('Select a strata manager'),
-  amount: z.coerce.number().min(0.01, 'Amount required'),
-  notes: z.string().optional(),
-});
+import { JobBillPanel } from './JobBillPanel';
 
 interface Props {
   job: Job;
@@ -38,23 +29,20 @@ export const JobDetailPanel = ({ job }: Props) => {
   const [showEditPanel, setShowEditPanel] = useState(false);
   const [showCompletionPanel, setShowCompletionPanel] = useState(false);
   const [completionEditMode, setCompletionEditMode] = useState(false);
-  const [showBillForm, setShowBillForm] = useState(false);
+  const [showBillPanel, setShowBillPanel] = useState(false);
   const [showAssignForm, setShowAssignForm] = useState(false);
   const [lightboxIndex, setLightboxIndex] = useState<number | null>(null);
 
   const { data: contractors } = useContractors(true);
-  const { data: strataManagers } = useStrataManagers();
   const { data: photos } = useJobPhotos(job.id);
 
   const assignMutation = useAssignContractor(job.id);
   const markAcceptedMutation = useMarkAccepted(job.id);
   const markRejectedMutation = useMarkRejected(job.id);
   const startMutation = useStartJob(job.id);
-  const billMutation = useBillStrata(job.id);
   const cancelMutation = useCancelJob(job.id);
   const respondMutation = useRespondToJob(job.id);
 
-  const billForm = useForm({ resolver: zodResolver(billSchema) });
   const [selectedContractor, setSelectedContractor] = useState('');
 
   const run = async (mutFn: () => Promise<unknown>, successMsg: string) => {
@@ -163,7 +151,7 @@ export const JobDetailPanel = ({ job }: Props) => {
             </div>
             <div>
               <p className="text-xs text-gray-500 mb-0.5">Scope of Work</p>
-              <p className="text-sm text-gray-700">{job.completion.work_description}</p>
+              <MarkdownContent content={job.completion.work_description} />
             </div>
             {job.completion.materials && job.completion.materials.length > 0 && (
               <div>
@@ -228,9 +216,22 @@ export const JobDetailPanel = ({ job }: Props) => {
 
         {/* Billing info */}
         {job.billing && (
-          <div className="rounded-xl border bg-purple-50 p-4 space-y-1">
+          <div className="rounded-xl border bg-purple-50 p-4 space-y-1.5">
             <p className="text-xs font-semibold uppercase text-purple-600">Billed to Strata</p>
-            <p className="text-sm font-medium text-gray-800">${(job.billing as { amount: number }).amount.toFixed(2)}</p>
+            <div className="space-y-0.5 text-sm text-gray-600">
+              <div className="flex justify-between">
+                <span>Contractor Invoice</span>
+                <span>${(job.completion?.total_amount ?? 0).toFixed(2)}</span>
+              </div>
+              <div className="flex justify-between">
+                <span>Admin Fee</span>
+                <span>${(job.billing as { amount: number }).amount.toFixed(2)}</span>
+              </div>
+              <div className="border-t border-purple-200 pt-1 flex justify-between font-bold text-gray-900">
+                <span>Total</span>
+                <span>${((job.completion?.total_amount ?? 0) + (job.billing as { amount: number }).amount).toFixed(2)}</span>
+              </div>
+            </div>
             <p className="text-xs text-gray-500">
               {format(new Date((job.billing as { billed_at: string }).billed_at), 'dd MMM yyyy, h:mm a')}
             </p>
@@ -299,8 +300,8 @@ export const JobDetailPanel = ({ job }: Props) => {
                 </button>
               )}
 
-              {job.status === 'completed' && !job.billing && !showBillForm && (
-                <button onClick={() => setShowBillForm(true)} className="w-full rounded-lg bg-purple-600 py-2 text-sm font-semibold text-white hover:bg-purple-700">
+              {job.status === 'completed' && !job.billing && (
+                <button onClick={() => setShowBillPanel(true)} className="w-full rounded-lg bg-purple-600 py-2 text-sm font-semibold text-white hover:bg-purple-700">
                   Bill Strata Manager
                 </button>
               )}
@@ -339,42 +340,6 @@ export const JobDetailPanel = ({ job }: Props) => {
             </>
           )}
 
-          {/* Bill strata form */}
-          {showBillForm && (
-            <form
-              onSubmit={billForm.handleSubmit(async (d) => {
-                await run(() => billMutation.mutateAsync(d), 'Strata manager billed successfully');
-                setShowBillForm(false);
-              })}
-              className="space-y-3 rounded-xl border p-4"
-            >
-              <p className="font-medium text-gray-700 text-sm">Bill Strata Manager</p>
-              <div>
-                <label className="mb-1 block text-xs font-medium text-gray-700">Strata Manager *</label>
-                <select {...billForm.register('strata_manager_id')} className={inputClass}>
-                  <option value="">Select…</option>
-                  {(strataManagers ?? []).map((sm) => (
-                    <option key={sm.id} value={sm.id}>{sm.name} — {sm.company ?? sm.email}</option>
-                  ))}
-                </select>
-              </div>
-              <div>
-                <label className="mb-1 block text-xs font-medium text-gray-700">Amount ($) *</label>
-                <input type="number" step="0.01" {...billForm.register('amount')} className={inputClass}
-                  defaultValue={job.completion?.total_amount ?? ''} />
-              </div>
-              <div>
-                <label className="mb-1 block text-xs font-medium text-gray-700">Notes</label>
-                <textarea rows={2} {...billForm.register('notes')} className={inputClass} />
-              </div>
-              <div className="flex gap-2">
-                <button type="submit" disabled={billMutation.isPending} className="flex-1 rounded-lg bg-purple-600 py-2 text-sm font-semibold text-white hover:bg-purple-700 disabled:opacity-60">
-                  {billMutation.isPending ? 'Sending…' : 'Send Invoice'}
-                </button>
-                <button type="button" onClick={() => setShowBillForm(false)} className="rounded-lg border px-4 py-2 text-sm text-gray-600 hover:bg-gray-50">Cancel</button>
-              </div>
-            </form>
-          )}
         </div>
 
         <p className="text-xs text-gray-400">
@@ -385,6 +350,11 @@ export const JobDetailPanel = ({ job }: Props) => {
       {/* Sliding edit panel */}
       {showEditPanel && (
         <JobEditPanel job={job} onClose={() => setShowEditPanel(false)} />
+      )}
+
+      {/* Sliding bill panel */}
+      {showBillPanel && (
+        <JobBillPanel job={job} onClose={() => setShowBillPanel(false)} />
       )}
 
       {/* Sliding completion panel */}

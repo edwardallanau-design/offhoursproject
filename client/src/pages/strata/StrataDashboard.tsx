@@ -6,6 +6,7 @@ import { Modal } from '../../components/shared/Modal';
 import { type Job, SERVICE_TYPE_LABELS } from '../../types';
 import { format } from 'date-fns';
 import { MapPin, Clock, ChevronRight, DollarSign } from 'lucide-react';
+import { MarkdownContent } from '../../components/shared/MarkdownContent';
 
 export const StrataDashboard = () => {
   const { data: jobs = [], isLoading } = useJobs();
@@ -65,7 +66,7 @@ export const StrataDashboard = () => {
             {selected.completion && (
               <div className="rounded-xl bg-green-50 p-4 space-y-1">
                 <p className="text-xs font-semibold uppercase text-green-600">Completed Work</p>
-                <p className="text-sm text-gray-700">{selected.completion.work_description}</p>
+                <MarkdownContent content={selected.completion.work_description} />
                 <div className="flex items-center gap-2 text-sm font-bold text-green-700 mt-2">
                   <DollarSign size={14} />
                   <span>Total: ${selected.completion.total_amount.toFixed(2)}</span>
@@ -73,9 +74,22 @@ export const StrataDashboard = () => {
               </div>
             )}
             {selected.billing && (
-              <div className="rounded-xl bg-purple-50 p-4 space-y-1">
+              <div className="rounded-xl bg-purple-50 p-4 space-y-1.5">
                 <p className="text-xs font-semibold uppercase text-purple-600">Invoice to You</p>
-                <p className="text-sm font-bold text-gray-800">${(selected.billing as { amount: number }).amount.toFixed(2)}</p>
+                <div className="space-y-0.5 text-sm text-gray-600">
+                  <div className="flex justify-between">
+                    <span>Contractor Invoice</span>
+                    <span>${(selected.completion?.total_amount ?? 0).toFixed(2)}</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span>Admin Fee</span>
+                    <span>${(selected.billing as { amount: number }).amount.toFixed(2)}</span>
+                  </div>
+                  <div className="border-t border-purple-200 pt-1 flex justify-between font-bold text-gray-900">
+                    <span>Total Due</span>
+                    <span>${((selected.completion?.total_amount ?? 0) + (selected.billing as { amount: number }).amount).toFixed(2)}</span>
+                  </div>
+                </div>
                 {(selected.billing as { notes?: string }).notes && (
                   <p className="text-xs text-gray-500">{(selected.billing as { notes: string }).notes}</p>
                 )}
