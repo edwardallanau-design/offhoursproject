@@ -6,16 +6,18 @@ import toast from 'react-hot-toast';
 import { ArrowLeft, Bold, Italic, List, Heading2 } from 'lucide-react';
 import { type Job, type ServiceType } from '../../types';
 import { useUpdateJob } from '../../hooks/useJobs';
+import { useStrataManagers } from '../../hooks/useStrataManagers';
 
 const editJobSchema = z.object({
   homeowner_name: z.string().min(1, 'Required'),
   homeowner_phone: z.string().min(1, 'Required'),
-  homeowner_address: z.string().min(1, 'Required').regex(/^[a-zA-Z0-9\s,\-.\/]+$/, 'Only letters, numbers, and common punctuation'),
+  homeowner_address: z.string().min(1, 'Required').regex(/^[a-zA-Z0-9\s,\-./]+$/, 'Only letters, numbers, and common punctuation'),
   suburb: z.string().min(1, 'Required').regex(/^[a-zA-Z0-9\s]+$/, 'Only letters, numbers, and spaces'),
   unit_number: z.string().regex(/^[a-zA-Z0-9]+$/, 'Only letters and numbers').optional().or(z.literal('')),
   service_type: z.enum(['plumbing', 'electrical', 'hvac', 'locksmith', 'appliance_repair', 'structural', 'other']),
   description: z.string().optional(),
   notes: z.string().optional(),
+  strata_manager_id: z.string().optional(),
 });
 
 type EditJobData = z.infer<typeof editJobSchema>;
@@ -57,6 +59,7 @@ interface Props {
 export const JobEditPanel = ({ job, onClose }: Props) => {
   const [visible, setVisible] = useState(false);
   const updateJobMutation = useUpdateJob(job.id);
+  const { data: strataManagers } = useStrataManagers();
   const descRef = useRef<HTMLTextAreaElement | null>(null);
 
   useEffect(() => {
@@ -79,6 +82,7 @@ export const JobEditPanel = ({ job, onClose }: Props) => {
       service_type: job.service_type,
       description: job.description ?? '',
       notes: job.notes ?? '',
+      strata_manager_id: job.strata_manager_id ?? '',
     },
   });
 
@@ -86,7 +90,12 @@ export const JobEditPanel = ({ job, onClose }: Props) => {
 
   const handleSubmit = form.handleSubmit(async (data) => {
     try {
-      await updateJobMutation.mutateAsync(data);
+      const payload = {
+        ...data,
+        unit_number: data.unit_number || undefined,
+        strata_manager_id: data.strata_manager_id || null,
+      };
+      await updateJobMutation.mutateAsync(payload);
       toast.success('Job updated');
       handleClose();
     } catch {
@@ -98,9 +107,8 @@ export const JobEditPanel = ({ job, onClose }: Props) => {
 
   return (
     <div
-      className={`absolute inset-0 bg-white overflow-y-auto z-10 transition-transform duration-300 ease-in-out ${
-        visible ? 'translate-x-0' : 'translate-x-full'
-      }`}
+      className={`absolute inset-0 bg-white overflow-y-auto z-10 transition-transform duration-300 ease-in-out ${visible ? 'translate-x-0' : 'translate-x-full'
+        }`}
     >
       {/* Header */}
       <div className="flex items-center gap-3 border-b px-4 py-3 sticky top-0 bg-white z-10">
@@ -128,6 +136,9 @@ export const JobEditPanel = ({ job, onClose }: Props) => {
           <div>
             <label className="mb-1 block text-xs font-medium text-gray-700">Client Phone *</label>
             <input {...form.register('homeowner_phone')} type="tel" className={inputClass} />
+            {form.formState.errors.homeowner_phone && (
+              <p className="mt-1 text-xs text-red-600">{form.formState.errors.homeowner_phone.message}</p>
+            )}
           </div>
         </div>
 
@@ -205,6 +216,17 @@ export const JobEditPanel = ({ job, onClose }: Props) => {
             Notes <span className="text-xs font-normal text-gray-400">(internal)</span>
           </label>
           <textarea {...form.register('notes')} rows={2} className={inputClass} placeholder="Internal notes..." />
+        </div>
+
+        {/* Strata Manager */}
+        <div>
+          <label className="mb-1 block text-xs font-medium text-gray-700">Strata Manager</label>
+          <select {...form.register('strata_manager_id')} className={inputClass}>
+            <option value="">None</option>
+            {(strataManagers ?? []).map((sm) => (
+              <option key={sm.id} value={sm.id}>{sm.name} — {sm.company ?? sm.email}</option>
+            ))}
+          </select>
         </div>
 
         {/* Actions */}

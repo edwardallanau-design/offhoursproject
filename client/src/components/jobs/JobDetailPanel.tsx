@@ -25,6 +25,7 @@ export const JobDetailPanel = ({ job }: Props) => {
   const role = user?.role;
   const assignment = Array.isArray(job.assignment) ? job.assignment[0] : job.assignment;
   const contractor = assignment?.contractor;
+  const billing = Array.isArray(job.billing) ? (job.billing[0] ?? null) : (job.billing ?? null);
 
   const [showEditPanel, setShowEditPanel] = useState(false);
   const [showCompletionPanel, setShowCompletionPanel] = useState(false);
@@ -215,7 +216,7 @@ export const JobDetailPanel = ({ job }: Props) => {
         )}
 
         {/* Billing info */}
-        {job.billing && (
+        {billing && (
           <div className="rounded-xl border bg-purple-50 p-4 space-y-1.5">
             <p className="text-xs font-semibold uppercase text-purple-600">Billed to Strata</p>
             <div className="space-y-0.5 text-sm text-gray-600">
@@ -225,18 +226,18 @@ export const JobDetailPanel = ({ job }: Props) => {
               </div>
               <div className="flex justify-between">
                 <span>Admin Fee</span>
-                <span>${(job.billing as { amount: number }).amount.toFixed(2)}</span>
+                <span>${billing.amount.toFixed(2)}</span>
               </div>
               <div className="border-t border-purple-200 pt-1 flex justify-between font-bold text-gray-900">
                 <span>Total</span>
-                <span>${((job.completion?.total_amount ?? 0) + (job.billing as { amount: number }).amount).toFixed(2)}</span>
+                <span>${((job.completion?.total_amount ?? 0) + billing.amount).toFixed(2)}</span>
               </div>
             </div>
             <p className="text-xs text-gray-500">
-              {format(new Date((job.billing as { billed_at: string }).billed_at), 'dd MMM yyyy, h:mm a')}
+              {format(new Date(billing.billed_at), 'dd MMM yyyy, h:mm a')}
             </p>
-            {(job.billing as { notes?: string }).notes && (
-              <p className="text-sm text-gray-600">{(job.billing as { notes: string }).notes}</p>
+            {billing.notes && (
+              <p className="text-sm text-gray-600">{billing.notes}</p>
             )}
           </div>
         )}
@@ -300,7 +301,7 @@ export const JobDetailPanel = ({ job }: Props) => {
                 </button>
               )}
 
-              {job.status === 'completed' && !job.billing && (
+              {job.status === 'completed' && !billing && (
                 <button onClick={() => setShowBillPanel(true)} className="w-full rounded-lg bg-purple-600 py-2 text-sm font-semibold text-white hover:bg-purple-700">
                   Bill Strata Manager
                 </button>

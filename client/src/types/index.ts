@@ -108,7 +108,7 @@ export interface Job {
   // Joined fields
   assignment?: JobAssignment | JobAssignment[] | null;
   completion?: JobCompletion | null;
-  billing?: BillingRecord | null;
+  billing?: BillingRecord | BillingRecord[] | null;
   photos?: JobPhoto[];
 }
 

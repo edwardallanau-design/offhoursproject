@@ -10,7 +10,7 @@ import { Bold, Italic, List, Heading2 } from 'lucide-react';
 const schema = z.object({
   homeowner_name: z.string().min(1, 'Required'),
   homeowner_phone: z.string().min(1, 'Required'),
-  homeowner_address: z.string().min(1, 'Required').regex(/^[a-zA-Z0-9\s,\-.\/]+$/, 'Only letters, numbers, and common punctuation'),
+  homeowner_address: z.string().min(1, 'Required').regex(/^[a-zA-Z0-9\s,\-./]+$/, 'Only letters, numbers, and common punctuation'),
   suburb: z.string().min(1, 'Required').regex(/^[a-zA-Z0-9\s]+$/, 'Only letters, numbers, and spaces'),
   unit_number: z.string().regex(/^[a-zA-Z0-9]+$/, 'Only letters and numbers').optional().or(z.literal('')),
   service_type: z.enum(['plumbing', 'electrical', 'hvac', 'locksmith', 'appliance_repair', 'structural', 'other']),
@@ -68,7 +68,12 @@ export const CreateJobForm = ({ onSuccess }: Props) => {
 
   const onSubmit = async (data: FormData) => {
     try {
-      await mutateAsync(data);
+      const payload = {
+        ...data,
+        unit_number: data.unit_number || undefined,
+        strata_manager_id: data.strata_manager_id || undefined,
+      };
+      await mutateAsync(payload);
       toast.success('Job created successfully');
       onSuccess();
     } catch {

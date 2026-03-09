@@ -9,8 +9,8 @@ import { useBillStrata } from '../../hooks/useJobs';
 import { useStrataManagers } from '../../hooks/useStrataManagers';
 
 const billSchema = z.object({
-  strata_manager_id: z.string().uuid('Select a strata manager'),
-  amount: z.coerce.number().min(0.01, 'Amount required'),
+  strata_manager_id: z.string().min(1, 'Select a strata manager'),
+  amount: z.number({ error: 'Amount required' }).min(0.01, 'Amount required'),
   notes: z.string().optional(),
 });
 
@@ -121,7 +121,7 @@ export const JobBillPanel = ({ job, onClose }: Props) => {
               type="number"
               step="0.01"
               min="0"
-              {...form.register('amount')}
+              {...form.register('amount', { valueAsNumber: true })}
               className={`${inputClass} pl-6`}
               placeholder="0.00"
             />

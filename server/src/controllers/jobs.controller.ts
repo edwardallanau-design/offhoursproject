@@ -28,6 +28,7 @@ const updateJobSchema = z.object({
   service_type: z.enum(['plumbing', 'electrical', 'hvac', 'locksmith', 'appliance_repair', 'structural', 'other']).optional(),
   description: z.string().optional(),
   notes: z.string().optional(),
+  strata_manager_id: z.string().uuid().nullable().optional(),
 });
 
 const createJobSchema = z.object({
@@ -39,7 +40,7 @@ const createJobSchema = z.object({
   service_type: z.enum(['plumbing', 'electrical', 'hvac', 'locksmith', 'appliance_repair', 'structural', 'other']),
   description: z.string().optional(),
   notes: z.string().optional(),
-  strata_manager_id: z.string().uuid().optional(),
+  strata_manager_id: z.string().uuid().nullable().optional(),
 });
 
 const completeJobSchema = z.object({

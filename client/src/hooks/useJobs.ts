@@ -33,7 +33,16 @@ export const useUpdateJob = (jobId: string) => {
   const qc = useQueryClient();
   return useMutation({
     mutationFn: (body: Record<string, unknown>) => api.patch(`/jobs/${jobId}`, body),
-    onSuccess: () => qc.invalidateQueries({ queryKey: ['jobs'] }),
+    onSuccess: (response) => {
+      const updatedJob = response.data?.data;
+      if (updatedJob) {
+        qc.setQueriesData<Job[]>({ queryKey: ['jobs'] }, (old) => {
+          if (!Array.isArray(old)) return old;
+          return old.map((j) => (j.id === jobId ? { ...j, ...updatedJob } : j));
+        });
+      }
+      qc.invalidateQueries({ queryKey: ['jobs'] });
+    },
   });
 };
 

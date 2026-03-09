@@ -37,8 +37,11 @@ const STATUS_OPTIONS: { status: PaymentStatus; label: string; active: string; in
   },
 ];
 
+const getBilling = (j: Job): BillingRecord | null =>
+  Array.isArray(j.billing) ? (j.billing[0] ?? null) : (j.billing ?? null);
+
 const BillingDetailModal = ({ job, onClose }: { job: Job; onClose: () => void }) => {
-  const billing = job.billing as BillingRecord | null;
+  const billing = getBilling(job);
   const updateStatus = useUpdateBillingPaymentStatus(billing?.id ?? '');
   const [pendingStatus, setPendingStatus] = useState<PaymentStatus>(billing?.payment_status ?? 'billed');
   const [pendingNotes, setPendingNotes] = useState(billing?.notes ?? '');
@@ -169,10 +172,10 @@ export const AdminBillingPage = () => {
 
   const activeTabDef = TABS.find((t) => t.status === activeTab)!;
   const filteredJobs = billedJobs.filter(
-    (j) => (j.billing as BillingRecord | null)?.payment_status === activeTab,
+    (j) => getBilling(j)?.payment_status === activeTab,
   );
   const tabTotal = filteredJobs.reduce((sum, j) => {
-    const billing = j.billing as BillingRecord | null;
+    const billing = getBilling(j);
     return sum + (billing?.amount ?? 0) + (j.completion?.total_amount ?? 0);
   }, 0);
 
@@ -191,7 +194,7 @@ export const AdminBillingPage = () => {
       <div className="flex items-end gap-1 border-b border-gray-200 mb-5">
         {TABS.map(({ status, label, dot }) => {
           const count = billedJobs.filter(
-            (j) => (j.billing as BillingRecord | null)?.payment_status === status,
+            (j) => getBilling(j)?.payment_status === status,
           ).length;
           const isActive = activeTab === status;
           return (
@@ -226,7 +229,7 @@ export const AdminBillingPage = () => {
       ) : (
         <div className="space-y-3">
           {filteredJobs.map((job) => {
-            const billing = job.billing as BillingRecord | null;
+            const billing = getBilling(job);
             const grandTotal = (billing?.amount ?? 0) + (job.completion?.total_amount ?? 0);
             const assignment = Array.isArray(job.assignment) ? job.assignment[0] : job.assignment;
             return (
