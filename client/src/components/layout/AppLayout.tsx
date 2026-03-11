@@ -1,6 +1,7 @@
-import { ReactNode, useState } from 'react';
+import { type ReactNode, useState } from 'react';
 import { NavLink, useNavigate } from 'react-router-dom';
 import { useAuth } from '../../auth/AuthContext';
+import { useJobsRealtime } from '../../hooks/useJobs';
 import {
   LayoutDashboard, Users, Building2, LogOut, Menu, X, Briefcase, Home, FileText
 } from 'lucide-react';
@@ -15,6 +16,7 @@ interface NavItem {
 const navByRole: Record<UserRole, NavItem[]> = {
   admin: [
     { to: '/admin', label: 'Dashboard', icon: <LayoutDashboard size={18} /> },
+    { to: '/admin/billing', label: 'Billing', icon: <FileText size={18} /> },
     { to: '/admin/contractors', label: 'Contractors', icon: <Users size={18} /> },
     { to: '/admin/strata-managers', label: 'Strata Managers', icon: <Building2 size={18} /> },
   ],
@@ -42,6 +44,7 @@ export const AppLayout = ({ children }: { children: ReactNode }) => {
   const { user, logout } = useAuth();
   const navigate = useNavigate();
   const [sidebarOpen, setSidebarOpen] = useState(false);
+  useJobsRealtime();
 
   if (!user) return null;
   const navItems = navByRole[user.role];

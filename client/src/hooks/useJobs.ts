@@ -1,6 +1,24 @@
+import { useEffect } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { api } from '../lib/api';
+import { supabase } from '../lib/supabase';
 import type { Job } from '../types';
+
+export const useJobsRealtime = () => {
+  const qc = useQueryClient();
+  useEffect(() => {
+    const channel = supabase
+      .channel('jobs-realtime')
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'jobs' }, () => {
+        qc.invalidateQueries({ queryKey: ['jobs'] });
+      })
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'billing_records' }, () => {
+        qc.invalidateQueries({ queryKey: ['jobs'] });
+      })
+      .subscribe();
+    return () => { supabase.removeChannel(channel); };
+  }, [qc]);
+};
 
 export const useJobs = (status?: string) =>
   useQuery<Job[]>({
@@ -10,6 +28,23 @@ export const useJobs = (status?: string) =>
       return data.data;
     },
   });
+
+export const useUpdateJob = (jobId: string) => {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (body: Record<string, unknown>) => api.patch(`/jobs/${jobId}`, body),
+    onSuccess: (response) => {
+      const updatedJob = response.data?.data;
+      if (updatedJob) {
+        qc.setQueriesData<Job[]>({ queryKey: ['jobs'] }, (old) => {
+          if (!Array.isArray(old)) return old;
+          return old.map((j) => (j.id === jobId ? { ...j, ...updatedJob } : j));
+        });
+      }
+      qc.invalidateQueries({ queryKey: ['jobs'] });
+    },
+  });
+};
 
 export const useJob = (id: string) =>
   useQuery<Job>({
@@ -77,12 +112,35 @@ export const useCompleteJob = (jobId: string) => {
     mutationFn: (body: {
       work_description: string;
       labor_cost: number;
-      materials_cost: number;
+      materials?: Array<{ name: string; cost: number }>;
       photo_paths?: string[];
     }) => api.post(`/jobs/${jobId}/complete`, body),
     onSuccess: () => qc.invalidateQueries({ queryKey: ['jobs'] }),
   });
 };
+
+export const useUpdateCompletion = (jobId: string) => {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (body: {
+      work_description: string;
+      labor_cost: number;
+      materials?: Array<{ name: string; cost: number }>;
+      photo_paths?: string[];
+    }) => api.patch(`/jobs/${jobId}/completion`, body),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['jobs'] }),
+  });
+};
+
+export const useJobPhotos = (jobId: string) =>
+  useQuery({
+    queryKey: ['jobs', jobId, 'photos'],
+    queryFn: async () => {
+      const { data } = await api.get(`/jobs/${jobId}/photos`);
+      return data.data as Array<{ id: string; storage_path: string; signed_url?: string; uploaded_at: string }>;
+    },
+    enabled: !!jobId,
+  });
 
 export const useBillStrata = (jobId: string) => {
   const qc = useQueryClient();
@@ -97,6 +155,15 @@ export const useCancelJob = (jobId: string) => {
   const qc = useQueryClient();
   return useMutation({
     mutationFn: () => api.patch(`/jobs/${jobId}/cancel`),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['jobs'] }),
+  });
+};
+
+export const useUpdateBillingPaymentStatus = (billingId: string) => {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (payload: { payment_status: 'billed' | 'paid' | 'reconciliation'; notes?: string }) =>
+      api.patch(`/billing/${billingId}/payment-status`, payload),
     onSuccess: () => qc.invalidateQueries({ queryKey: ['jobs'] }),
   });
 };

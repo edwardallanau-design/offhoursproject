@@ -15,20 +15,38 @@ import {
 } from '../services/notification.service';
 import { JobStatus } from '../types';
 
+const alphanumericAddress = (s: z.ZodString) => s.regex(/^[a-zA-Z0-9\s,\-.\/]+$/, 'Only letters, numbers, and common punctuation allowed');
+const alphanumericSuburb = (s: z.ZodString) => s.regex(/^[a-zA-Z0-9\s]+$/, 'Only letters, numbers, and spaces allowed');
+const alphanumericUnit = (s: z.ZodString) => s.regex(/^[a-zA-Z0-9]+$/, 'Only letters and numbers allowed');
+
+const updateJobSchema = z.object({
+  homeowner_name: z.string().min(1).optional(),
+  homeowner_phone: z.string().min(1).optional(),
+  homeowner_address: alphanumericAddress(z.string().min(1)).optional(),
+  suburb: alphanumericSuburb(z.string().min(1)).optional(),
+  unit_number: alphanumericUnit(z.string()).optional(),
+  service_type: z.enum(['plumbing', 'electrical', 'hvac', 'locksmith', 'appliance_repair', 'structural', 'other']).optional(),
+  description: z.string().optional(),
+  notes: z.string().optional(),
+  strata_manager_id: z.string().uuid().nullable().optional(),
+});
+
 const createJobSchema = z.object({
   homeowner_name: z.string().min(1),
   homeowner_phone: z.string().min(1),
-  homeowner_address: z.string().min(1),
-  unit_number: z.string().optional(),
+  homeowner_address: alphanumericAddress(z.string().min(1)),
+  suburb: alphanumericSuburb(z.string().min(1)),
+  unit_number: alphanumericUnit(z.string()).optional(),
   service_type: z.enum(['plumbing', 'electrical', 'hvac', 'locksmith', 'appliance_repair', 'structural', 'other']),
   description: z.string().optional(),
-  strata_manager_id: z.string().uuid().optional(),
+  notes: z.string().optional(),
+  strata_manager_id: z.string().uuid().nullable().optional(),
 });
 
 const completeJobSchema = z.object({
   work_description: z.string().min(1),
   labor_cost: z.number().min(0),
-  materials_cost: z.number().min(0),
+  materials: z.array(z.object({ name: z.string().min(1), cost: z.number().min(0) })).optional(),
   photo_paths: z.array(z.string()).optional(),
 });
 
@@ -279,14 +297,16 @@ export const completeJob = async (req: Request, res: Response) => {
     return sendError(res, 400, `Cannot complete job with status "${job.status}"`, 'INVALID_TRANSITION');
   }
 
-  const totalAmount = body.labor_cost + body.materials_cost;
+  const materials_cost = (body.materials ?? []).reduce((sum, m) => sum + m.cost, 0);
+  const totalAmount = body.labor_cost + materials_cost;
 
   // Insert completion record
   const { error: cErr } = await supabase.from('job_completions').upsert({
     job_id: jobId,
     work_description: body.work_description,
     labor_cost: body.labor_cost,
-    materials_cost: body.materials_cost,
+    materials_cost,
+    materials: body.materials ?? [],
     total_amount: totalAmount,
   });
   if (cErr) throw new Error(cErr.message);
@@ -382,6 +402,50 @@ export const billStrataManager = async (req: Request, res: Response) => {
   sendSuccess(res, { message: 'Strata manager billed successfully' });
 };
 
+// PATCH /api/jobs/:id/completion
+export const updateCompletion = async (req: Request, res: Response) => {
+  const body = completeJobSchema.parse(req.body);
+  const jobId = param(req, 'id');
+
+  const job = await getJobById(jobId);
+  if (!job) return sendError(res, 404, 'Job not found', 'NOT_FOUND');
+  if (!job.completion) return sendError(res, 404, 'No completion record found', 'NOT_FOUND');
+
+  if (req.role === 'contractor') {
+    const assignment = Array.isArray(job.assignment) ? job.assignment[0] : job.assignment;
+    if (!assignment || assignment.contractor?.id !== req.contractorId) {
+      return sendError(res, 403, 'You are not assigned to this job', 'FORBIDDEN');
+    }
+  }
+
+  const materials_cost = (body.materials ?? []).reduce((sum, m) => sum + m.cost, 0);
+  const total_amount = body.labor_cost + materials_cost;
+
+  const { error: uErr } = await supabase
+    .from('job_completions')
+    .update({
+      work_description: body.work_description,
+      labor_cost: body.labor_cost,
+      materials_cost,
+      materials: body.materials ?? [],
+      total_amount,
+    })
+    .eq('job_id', jobId);
+  if (uErr) throw new Error(uErr.message);
+
+  if (body.photo_paths?.length) {
+    await supabase.from('job_photos').insert(
+      body.photo_paths.map((path) => ({
+        job_id: jobId,
+        storage_path: path,
+        uploaded_by: req.user!.id,
+      })),
+    );
+  }
+
+  sendSuccess(res, await getJobById(jobId));
+};
+
 // PATCH /api/jobs/:id/cancel
 export const cancelJob = async (req: Request, res: Response) => {
   const jobId = param(req, 'id');
@@ -392,6 +456,41 @@ export const cancelJob = async (req: Request, res: Response) => {
   }
   const updated = await updateJobStatus(jobId, 'cancelled');
   sendSuccess(res, updated);
+};
+
+// PATCH /api/billing/:id/payment-status
+export const updateBillingPaymentStatus = async (req: Request, res: Response) => {
+  const { payment_status, notes } = z.object({
+    payment_status: z.enum(['billed', 'paid', 'reconciliation']),
+    notes: z.string().optional(),
+  }).parse(req.body);
+
+  const id = param(req, 'id');
+  const { data, error } = await supabase
+    .from('billing_records')
+    .update({ payment_status, ...(notes !== undefined && { notes }) })
+    .eq('id', id)
+    .select()
+    .single();
+
+  if (error) throw new Error(error.message);
+  if (!data) return sendError(res, 404, 'Billing record not found', 'NOT_FOUND');
+  sendSuccess(res, data);
+};
+
+// PATCH /api/jobs/:id
+export const updateJob = async (req: Request, res: Response) => {
+  const body = updateJobSchema.parse(req.body);
+  const id = param(req, 'id');
+  const { data, error } = await supabase
+    .from('jobs')
+    .update(body)
+    .eq('id', id)
+    .select()
+    .single();
+  if (error) throw new Error(error.message);
+  if (!data) return sendError(res, 404, 'Job not found', 'NOT_FOUND');
+  sendSuccess(res, data);
 };
 
 // GET /api/jobs/:id/photos

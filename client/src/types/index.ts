@@ -67,6 +67,7 @@ export interface JobCompletion {
   labor_cost: number;
   materials_cost: number;
   total_amount: number;
+  materials?: Array<{ name: string; cost: number }>;
   submitted_at: string;
 }
 
@@ -84,6 +85,7 @@ export interface BillingRecord {
   strata_manager_id: string;
   amount: number;
   notes: string | null;
+  payment_status: 'billed' | 'paid' | 'reconciliation';
   billed_at: string;
   strata_manager?: StrataManager;
 }
@@ -95,16 +97,18 @@ export interface Job {
   homeowner_name: string;
   homeowner_phone: string;
   homeowner_address: string;
+  suburb: string | null;
   unit_number: string | null;
   service_type: ServiceType;
   description: string | null;
+  notes: string | null;
   status: JobStatus;
   created_at: string;
   updated_at: string;
   // Joined fields
   assignment?: JobAssignment | JobAssignment[] | null;
   completion?: JobCompletion | null;
-  billing?: BillingRecord | null;
+  billing?: BillingRecord | BillingRecord[] | null;
   photos?: JobPhoto[];
 }
 

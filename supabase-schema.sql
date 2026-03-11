@@ -64,9 +64,11 @@ CREATE TABLE public.jobs (
   homeowner_name    TEXT NOT NULL,
   homeowner_phone   TEXT NOT NULL,
   homeowner_address TEXT NOT NULL,
+  suburb            TEXT,
   unit_number       TEXT,
   service_type      service_type NOT NULL,
   description       TEXT,
+  notes             TEXT,
   status            job_status NOT NULL DEFAULT 'new',
   created_at        TIMESTAMPTZ NOT NULL DEFAULT NOW(),
   updated_at        TIMESTAMPTZ NOT NULL DEFAULT NOW()
@@ -88,6 +90,7 @@ CREATE TABLE public.job_completions (
   labor_cost       NUMERIC(10,2) NOT NULL DEFAULT 0,
   materials_cost   NUMERIC(10,2) NOT NULL DEFAULT 0,
   total_amount     NUMERIC(10,2) NOT NULL,
+  materials        JSONB,
   submitted_at     TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
 
@@ -105,8 +108,27 @@ CREATE TABLE public.billing_records (
   strata_manager_id UUID NOT NULL REFERENCES public.strata_managers(id),
   amount            NUMERIC(10,2) NOT NULL,
   notes             TEXT,
+  payment_status    TEXT NOT NULL DEFAULT 'billed'
+                      CONSTRAINT billing_payment_status_check
+                        CHECK (payment_status IN ('billed', 'paid', 'reconciliation')),
   billed_at         TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
+
+-- ── MIGRATIONS (run on existing databases) ────────────────────
+-- billing_records: payment_status column
+-- ALTER TABLE public.billing_records
+--   ADD COLUMN payment_status TEXT NOT NULL DEFAULT 'billed'
+--   CONSTRAINT billing_payment_status_check
+--     CHECK (payment_status IN ('billed', 'paid', 'reconciliation'));
+
+-- jobs: internal notes field
+-- ALTER TABLE public.jobs ADD COLUMN notes TEXT;
+
+-- jobs: suburb field
+-- ALTER TABLE public.jobs ADD COLUMN suburb TEXT;
+
+-- job_completions: materials breakdown
+-- ALTER TABLE public.job_completions ADD COLUMN materials JSONB;
 
 -- ──────────────────────────────────────────────────────────────
 -- NOTIFICATIONS

@@ -28,7 +28,7 @@ export const getJobsForRole = async (
       *,
       assignment:job_assignments(
         id, assigned_at,
-        contractor:contractors(id, name, phone, email, trade)
+        contractor:contractors(id, user_id, name, phone, email, trade)
       ),
       completion:job_completions(*),
       billing:billing_records(*, strata_manager:strata_managers(name, email))
@@ -65,7 +65,7 @@ export const getJobById = async (id: string) => {
       *,
       assignment:job_assignments(
         id, assigned_at,
-        contractor:contractors(id, name, phone, email, trade)
+        contractor:contractors(id, user_id, name, phone, email, trade)
       ),
       completion:job_completions(*),
       photos:job_photos(*),

@@ -25,7 +25,12 @@ router.patch('/jobs/:id/mark-rejected', authenticate, requireAdmin, asyncHandler
 router.patch('/jobs/:id/start', authenticate, requireRole('admin', 'contractor'), asyncHandler(jobs.startJob));
 router.post('/jobs/:id/complete', authenticate, requireRole('admin', 'contractor'), asyncHandler(jobs.completeJob));
 router.post('/jobs/:id/bill', authenticate, requireAdmin, asyncHandler(jobs.billStrataManager));
+router.patch('/jobs/:id/completion', authenticate, requireRole('admin', 'contractor'), asyncHandler(jobs.updateCompletion));
 router.patch('/jobs/:id/cancel', authenticate, requireAdmin, asyncHandler(jobs.cancelJob));
+router.patch('/jobs/:id', authenticate, requireAdmin, asyncHandler(jobs.updateJob));
+
+// ─── Billing ─────────────────────────────────────────────────
+router.patch('/billing/:id/payment-status', authenticate, requireAdmin, asyncHandler(jobs.updateBillingPaymentStatus));
 
 // ─── Contractors ─────────────────────────────────────────────
 router.get('/contractors', authenticate, requireAdmin, asyncHandler(contractors.listContractors));

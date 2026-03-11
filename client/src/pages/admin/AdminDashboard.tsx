@@ -14,7 +14,6 @@ const STATUS_GROUPS: { status: JobStatus; label: string }[] = [
   { status: 'accepted', label: 'Accepted' },
   { status: 'in_progress', label: 'In Progress' },
   { status: 'completed', label: 'Completed' },
-  { status: 'billed', label: 'Billed' },
 ];
 
 export const AdminDashboard = () => {
@@ -24,7 +23,7 @@ export const AdminDashboard = () => {
   const [activeTab, setActiveTab] = useState<JobStatus | 'all'>('all');
 
   const filteredJobs = activeTab === 'all'
-    ? jobs.filter((j) => j.status !== 'cancelled')
+    ? jobs.filter((j) => j.status !== 'cancelled' && j.status !== 'billed')
     : jobs.filter((j) => j.status === activeTab);
 
   return (
@@ -46,7 +45,7 @@ export const AdminDashboard = () => {
           onClick={() => setActiveTab('all')}
           className={`rounded-full px-3 py-1 text-sm font-medium transition-colors ${activeTab === 'all' ? 'bg-gray-900 text-white' : 'bg-white border text-gray-600 hover:bg-gray-50'}`}
         >
-          All ({jobs.filter((j) => j.status !== 'cancelled').length})
+          All ({jobs.filter((j) => j.status !== 'cancelled' && j.status !== 'billed').length})
         </button>
         {STATUS_GROUPS.map(({ status, label }) => {
           const count = jobs.filter((j) => j.status === status).length;
