@@ -7,7 +7,7 @@ import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import toast from 'react-hot-toast';
-import { UserPlus, Phone, Mail, Wrench, Check, X } from 'lucide-react';
+import { UserPlus, Phone, Mail, Wrench } from 'lucide-react';
 
 const createSchema = z.object({
   name: z.string().min(1, 'Required'),

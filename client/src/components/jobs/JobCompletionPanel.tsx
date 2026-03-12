@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { useForm, useFieldArray } from 'react-hook-form';
+import { useForm, useFieldArray, type Resolver } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import toast from 'react-hot-toast';
@@ -60,7 +60,7 @@ export const JobCompletionPanel = ({
   };
 
   const form = useForm<CompletionData>({
-    resolver: zodResolver(completionSchema),
+    resolver: zodResolver(completionSchema) as Resolver<CompletionData>,
     defaultValues: {
       work_description: initialData?.work_description ?? '',
       labor_cost: initialData?.labor_cost ?? 0,
